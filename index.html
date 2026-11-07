@@ -596,6 +596,20 @@
     let TOKEN = tokenFromUrl || localStorage.getItem('smartoff_token') || '';
     let currentLang = urlParams.get('lang') || localStorage.getItem('smartoff_lang') || 'pt';
 
+    const ipFromUrl = urlParams.get('ip');
+    const hostFromUrl = urlParams.get('h');
+    const portFromUrl = urlParams.get('port') || '4856';
+    if (ipFromUrl) {
+      try {
+        localStorage.setItem('smartoff_local_endpoint', 'http://' + ipFromUrl + ':' + portFromUrl);
+      } catch (e) {}
+    }
+    if (hostFromUrl) {
+      try {
+        localStorage.setItem('smartoff_mdns_endpoint', 'http://' + hostFromUrl + '.local:' + portFromUrl);
+      } catch (e) {}
+    }
+
     if (tokenFromUrl) {
       try {
         localStorage.setItem('smartoff_token', tokenFromUrl);
@@ -726,21 +740,27 @@
       const relay = await queryRelay(true);
       const candidates = [];
 
-      if (relay) {
-        if (relay.localIp) {
-          candidates.push('http://' + relay.localIp + ':' + (relay.port || 4856));
-        }
-        if (relay.tunnelUrl) {
-          candidates.push(stripSlash(relay.tunnelUrl));
-        }
-      }
-
-      // Local Bonjour / mDNS fallback
-      candidates.push('http://nuno-pc.local:4856');
-      candidates.push('http://192.168.1.87:4856');
-
+      // 1. Saved local and mDNS endpoints
       const savedLocal = localStorage.getItem('smartoff_local_endpoint');
       if (savedLocal && !candidates.includes(savedLocal)) candidates.push(savedLocal);
+      const savedMdns = localStorage.getItem('smartoff_mdns_endpoint');
+      if (savedMdns && !candidates.includes(savedMdns)) candidates.push(savedMdns);
+
+      // 2. Dynamic relay endpoints (for current user)
+      if (relay) {
+        if (relay.localIp) {
+          const ep = 'http://' + relay.localIp + ':' + (relay.port || 4856);
+          if (!candidates.includes(ep)) candidates.push(ep);
+        }
+        if (relay.hostname) {
+          const mep = 'http://' + relay.hostname + '.local:' + (relay.port || 4856);
+          if (!candidates.includes(mep)) candidates.push(mep);
+        }
+        if (relay.tunnelUrl) {
+          const tun = stripSlash(relay.tunnelUrl);
+          if (!candidates.includes(tun)) candidates.push(tun);
+        }
+      }
 
       // Fast check candidates
       for (const cand of candidates) {
