@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SmartOff Remote</title>
+  <meta name="theme-color" content="#0c1017">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SmartOff">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
+  <link rel="shortcut icon" href="icon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+    body {
+      background-color: #0c1017;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      overflow-x: hidden;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0 14px 0;
+      border-bottom: 1px solid #1e293b;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1.5px solid #38bdf8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+      object-fit: cover;
+    }
+    .brand-name { font-size: 17px; font-weight: 700; color: #fff; letter-spacing: 0.5px; }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lang-switcher {
+      display: flex;
+      align-items: center;
+      background: #141b26;
+      border: 1px solid #243144;
+      border-radius: 16px;
+      padding: 2px 4px;
+      gap: 2px;
+    }
+    .lang-pill {
+      background: transparent;
+      border: none;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 3px 5px;
+      border-radius: 12px;
+      opacity: 0.6;
+      transition: all 0.15s ease;
+    }
+    .lang-pill.active {
+      opacity: 1;
+      background: rgba(56, 189, 248, 0.2);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #38bdf8;
+    }
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+    .pulse-dot.danger, .pulse-dot.shutdown { background-color: #ef4444; box-shadow: 0 0 8px #ef4444; }
+    .pulse-dot.warning, .pulse-dot.signout { background-color: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+    .pulse-dot.sleep { background-color: #818cf8; box-shadow: 0 0 8px #818cf8; }
+    .pulse-dot.hibernate { background-color: #38bdf8; box-shadow: 0 0 8px #38bdf8; }
+    .pulse-dot.restart { background-color: #34d399; box-shadow: 0 0 8px #34d399; }
+
+    /* Persistent Install Card */
+    .install-card {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(15, 23, 42, 0.9));
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+    .install-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .install-card-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-dismiss {
+      background: transparent;
+      border: none;
+      color: #64748b;
+      font-size: 15px;
+      cursor: pointer;
+      padding: 2px 6px;
+    }
+    .install-card-desc {
+      font-size: 12px;
+      color: #cbd5e1;
+      line-height: 1.45;
+    }
+    .install-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 11.5px;
+      color: #94a3b8;
+      line-height: 1.4;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .install-steps b { color: #f1f5f9; }
+
+    .main-card {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 0 10px 0;
+    }
+    .action-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #38bdf8;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      background: rgba(56, 189, 248, 0.1);
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+    .digits {
+      font-size: 58px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 2px;
+      color: #ffffff;
+      text-shadow: 0 0 24px rgba(56, 189, 248, 0.35);
+      margin-bottom: 8px;
+    }
+    .target-time {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 28px;
+    }
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+      align-self: flex-start;
+      width: 100%;
+    }
+    .grid-chips {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    .btn-chip {
+      background-color: #141b26;
+      border: 1px solid #243144;
+      border-radius: 12px;
+      color: #f1f5f9;
+      padding: 12px 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+    }
+    .btn-chip:active {
+      transform: scale(0.96);
+      background-color: #1e293b;
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+    .stack-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      margin-top: 6px;
+    }
+    .btn-action {
+      width: 100%;
+      padding: 15px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+    }
+    .btn-action:active { transform: scale(0.97); }
+    .btn-cancel {
+      background-color: #1e293b;
+      color: #f87171;
+      border: 1px solid #334155;
+    }
+    .btn-cancel:active { background-color: #334155; }
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: #ffffff;
+      box-shadow: 0 4px 18px rgba(239, 68, 68, 0.35);
+    }
+    .btn-danger:active { background: #b91c1c; }
+    .btn-sleep {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: #ffffff;
+      box-shadow: 0 4px 18px rgba(99, 102, 241, 0.35);
+    }
+    .btn-sleep:active { background: #4338ca; }
+
+    /* Custom minute scheduling input */
+    .custom-time-card {
+      width: 100%;
+      background: #141b26;
+      border: 1px solid #243144;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 14px;
+      box-sizing: border-box;
+    }
+    .custom-time-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .custom-time-row {
+      display: flex;
+      gap: 8px;
+    }
+    .custom-time-row input {
+      flex: 1;
+      background: #0c1017;
+      border: 1px solid #243144;
+      border-radius: 8px;
+      color: #fff;
+      padding: 8px 10px;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      outline: none;
+    }
+    .custom-time-row input:focus {
+      border-color: #38bdf8;
+    }
+    .btn-custom-submit {
+      padding: 8px 16px;
+      background: #0284c7;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .btn-custom-submit:active {
+      background: #0369a1;
+    }
+    .toast-msg {
+      display: none;
+      width: 100%;
+      text-align: center;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid #10b981;
+      color: #10b981;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Idle / Power state view */
+    .idle-view {
+      text-align: center;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .idle-icon-wrap {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.2) 0%, transparent 70%);
+      border: 1.5px solid #38bdf8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
+    }
+    .idle-title { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .idle-desc { font-size: 13px; color: #94a3b8; max-width: 290px; line-height: 1.5; margin-bottom: 24px; }
+
+    /* Post-Action Offline / Power States */
+    .power-state-box {
+      width: 100%;
+      background: #141b26;
+      border: 1px solid #243144;
+      border-radius: 16px;
+      padding: 24px 18px;
+      text-align: center;
+      margin-top: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    .power-state-box.shutdown { border-color: rgba(239, 68, 68, 0.4); }
+    .power-state-box.sleep { border-color: rgba(129, 140, 248, 0.4); }
+    .power-state-icon {
+      font-size: 42px;
+      margin-bottom: 12px;
+      display: inline-block;
+      animation: pulseGlow 2s infinite ease-in-out;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); opacity: 0.9; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+    .power-state-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .power-state-desc {
+      font-size: 12.5px;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+    .power-state-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      padding: 4px 10px;
+      border-radius: 12px;
+    }
+
+    /* Pairing Screen for fresh load without token */
+    .pairing-box {
+      background: #141b26;
+      border: 1px solid #243144;
+      border-radius: 18px;
+      padding: 30px 22px;
+      max-width: 360px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+      text-align: center;
+      margin: auto;
+    }
+    .pairing-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, transparent 70%);
+      border: 1.5px solid #38bdf8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #38bdf8;
+      margin: 0 auto 16px;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+    .pairing-box h2 { font-size: 19px; font-weight: 700; margin-bottom: 8px; color: #fff; }
+    .pairing-box p { font-size: 13px; color: #94a3b8; line-height: 1.5; }
+
+    /* Footer / Connection Summary */
+    .mobile-footer-info {
+      margin-top: auto;
+      padding: 14px 0 6px 0;
+      text-align: center;
+    }
+    .btn-conn-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #141b26;
+      border: 1px solid #243144;
+      padding: 5px 12px;
+      border-radius: 16px;
+      font-size: 11.5px;
+      color: #94a3b8;
+      cursor: pointer;
+    }
+    .conn-dot-mini {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <img src="icon.png" class="brand-logo" alt="SmartOff Logo">
+      <span class="brand-name">SmartOff</span>
+    </div>
+    <div class="header-right">
+      <div class="lang-switcher">
+        <button class="lang-pill" id="btn-lang-pt" onclick="switchLanguage('pt')" title="Português">PT</button>
+        <button class="lang-pill" id="btn-lang-en" onclick="switchLanguage('en')" title="English">EN</button>
+        <button class="lang-pill" id="btn-lang-es" onclick="switchLanguage('es')" title="Español">ES</button>
+        <button class="lang-pill" id="btn-lang-fr" onclick="switchLanguage('fr')" title="Français">FR</button>
+        <button class="lang-pill" id="btn-lang-de" onclick="switchLanguage('de')" title="Deutsch">DE</button>
+        <button class="lang-pill" id="btn-lang-it" onclick="switchLanguage('it')" title="Italiano">IT</button>
+        <button class="lang-pill" id="btn-lang-zh-CN" onclick="switchLanguage('zh-CN')" title="简体中文">简</button>
+        <button class="lang-pill" id="btn-lang-zh-TW" onclick="switchLanguage('zh-TW')" title="繁體中文">繁</button>
+      </div>
+      <div class="status-badge" id="badge-status">
+        <span class="pulse-dot" id="dot-status"></span>
+        <span id="label-status">Conectado</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-pairing" class="pairing-box" style="display:none;margin-top:40px;">
+    <div class="pairing-icon">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+    </div>
+    <h2 id="txt-pairing-title">Dispositivo não emparelhado</h2>
+    <p id="txt-pairing-desc" style="margin-top:10px;">Para acederes ao controlo remoto, abre o <b>SmartOff</b> no teu computador e aponta a câmara para o <b>código QR</b>.</p>
+    <p style="margin-top:12px;font-size:12px;color:#64748b;" id="txt-pairing-sub">Só precisas de ler o código uma única vez. Fica emparelhado para sempre!</p>
+  </div>
+
+  <div id="view-content" style="display:block;">
+    <div class="install-card" id="install-guide-box">
+      <div class="install-card-header">
+        <div class="install-card-title">
+          <span>📲</span>
+          <span id="txt-install-title">Instalar como App no Telemóvel</span>
+        </div>
+        <button type="button" class="btn-dismiss" onclick="dismissInstallGuide()" title="Fechar">✕</button>
+      </div>
+      <p class="install-card-desc" id="txt-install-desc">Para acederes a qualquer momento sem abrir o browser nem voltar a ler o QR Code:</p>
+      <div class="install-steps">
+        <div id="guide-android"><b>No Android (Chrome):</b> Toca no menu do browser (<b>⋮ no topo direito</b>) e escolhe <b>"Adicionar ao ecrã inicial"</b> ou <b>"Instalar aplicação"</b>.</div>
+        <div id="guide-ios"><b>No iPhone (Safari):</b> Toca no botão de <b>Partilhar (⬆️ no fundo)</b> e escolhe <b>"Adicionar ao Ecrã Principal"</b>.</div>
+      </div>
+    </div>
+
+    <!-- Power State / PC Turned Off View -->
+    <div id="view-power-state" style="display: none;">
+      <div class="power-state-box" id="box-power-state">
+        <span class="power-state-icon" id="icon-power-state">⏻</span>
+        <h2 class="power-state-title" id="txt-power-title">PC Desligado</h2>
+        <p class="power-state-desc" id="txt-power-desc">O computador foi encerrado. A aguardar que volte a ser ligado para restabelecer a ligação.</p>
+        <span class="power-state-hint" id="txt-reconnect-hint">
+          <span class="pulse-dot" style="width:5px;height:5px;"></span>
+          A aguardar que o PC volte a ligar...
+        </span>
+      </div>
+    </div>
+
+    <!-- Running Active Timer View -->
+    <div class="main-card" id="view-active" style="display: none;">
+      <div class="action-badge" id="txt-action-badge">DESLIGAMENTO ATIVO</div>
+      <div class="digits" id="txt-digits">00:00:00</div>
+      <div class="target-time" id="txt-target-time">Hora prevista: --:--:--</div>
+      
+      <div class="section-title" id="txt-add-time-title">Adicionar Tempo Extra:</div>
+      <div class="grid-chips">
+        <button type="button" class="btn-chip" onclick="sendAction('add-time', { seconds: 300 })">+5m</button>
+        <button type="button" class="btn-chip" onclick="sendAction('add-time', { seconds: 900 })">+15m</button>
+        <button type="button" class="btn-chip" onclick="sendAction('add-time', { seconds: 1800 })">+30m</button>
+        <button type="button" class="btn-chip" onclick="sendAction('add-time', { seconds: 3600 })">+1h</button>
+      </div>
+
+      <div class="stack-buttons">
+        <button class="btn-action btn-cancel" id="btn-cancel-action" onclick="sendAction('cancel')">❌ Cancelar Agendamento</button>
+        <button class="btn-action btn-danger" id="btn-shutdown-now" onclick="confirmAction('shutdown-now')">⚡ Desligar PC Imediatamente</button>
+      </div>
+    </div>
+
+    <!-- Idle View -->
+    <div class="main-card" id="view-idle">
+      <div class="idle-view">
+        <div class="idle-icon-wrap">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+        </div>
+        <h2 class="idle-title" id="txt-idle-title">O PC está em espera</h2>
+        <p class="idle-desc" id="txt-idle-desc">Nenhum temporizador ativo. Podes agendar ou desligar o computador remotamente a qualquer momento.</p>
+      </div>
+
+      <div class="section-title" id="txt-quick-title">Agendamento Rápido:</div>
+      <div class="grid-chips" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 12px;">
+        <button type="button" class="btn-chip" id="btn-preset-1h" onclick="sendAction('start', { seconds: 3600, actionType: 'shutdown' })">1 hora</button>
+        <button type="button" class="btn-chip" id="btn-preset-2h" onclick="sendAction('start', { seconds: 7200, actionType: 'shutdown' })">2 horas</button>
+      </div>
+
+      <div class="custom-time-card">
+        <div class="custom-time-label" id="txt-custom-time-label">⏱️ Outro tempo (em minutos):</div>
+        <div class="custom-time-row">
+          <input type="number" id="input-custom-mins" placeholder="Ex: 45" min="1" max="1440" inputmode="numeric">
+          <button type="button" class="btn-chip btn-custom-submit" id="btn-custom-start" onclick="scheduleCustomMinutes()">Agendar</button>
+        </div>
+      </div>
+      <div id="toast-notification" class="toast-msg"></div>
+
+      <div class="stack-buttons">
+        <button class="btn-action btn-danger" id="btn-shutdown-pc-now" onclick="confirmAction('shutdown-now')">⚡ Desligar PC Agora</button>
+        <button class="btn-action btn-sleep" id="btn-sleep-pc-now" onclick="confirmAction('sleep-now')">🌙 Suspender PC Agora</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mobile-footer-info">
+    <button type="button" class="btn-conn-badge" id="btn-conn-status">
+      <span class="conn-dot-mini" id="dot-conn-mini"></span>
+      <span id="txt-conn-summary">Universal (Wi-Fi + 4G)</span>
+    </button>
+  </div>
+
+  <script>
+    const DICT = {"pt":{"title":"SmartOff Remote","connected":"Conectado","connecting":"A ligar ao PC...","offline":"Sem Ligação","installTitle":"📲 Instalar como App no Telemóvel","installDesc":"Para não precisares de abrir o browser nem voltar a ler o QR Code:","androidStep":"<b>No Android (Chrome):</b> Toca no menu do browser (<b>os 3 pontinhos ⋮ no topo direito</b>) e escolhe <b>\"Adicionar ao ecrã inicial\"</b> ou <b>\"Instalar aplicação\"</b>.","iosStep":"<b>No iPhone (Safari):</b> Toca no botão de <b>Partilhar (⬆️ no fundo)</b> e escolhe <b>\"Adicionar ao Ecrã Principal\"</b>.","actionActive":"DESLIGAMENTO ATIVO","targetTime":"Hora prevista:","addExtraTime":"Adicionar Tempo Extra:","cancelBtn":"❌ Cancelar Agendamento","shutdownNowBtn":"⚡ Desligar PC Imediatamente","idleTitle":"O PC está em espera","idleDesc":"Nenhum temporizador ativo. Podes agendar ou desligar o computador remotamente a qualquer momento.","quickSchedule":"Agendamento Rápido:","h1":"1 hora","h2":"2 horas","shutdownPcNow":"⚡ Desligar PC Agora","sleepPcNow":"🌙 Suspender PC Agora","confirmShutdown":"Tens a certeza de que queres desligar o PC agora?","confirmSleep":"Suspender o computador agora?","commError":"Erro ao comunicar com o PC.","bootstrapTitle":"Dispositivo não emparelhado","bootstrapDesc":"Para acederes ao controlo remoto, abre o <b>SmartOff</b> no teu computador e aponta a câmara para o <b>código QR</b>.","bootstrapSub":"Só precisas de emparelhar uma vez. Depois podes instalar como App!","connectingPc":"A ligar ao SmartOff no teu PC...","unauthorized":"Acesso não autorizado. Por favor lê o código QR oficial do SmartOff no teu PC.","customTimeLabel":"⏱️ Outro tempo (em minutos):","customScheduleBtn":"Agendar","startedMsg":"Agendamento iniciado com sucesso!","cancelledMsg":"Agendamento cancelado.","stateShutdownTitle":"PC Desligado","stateShutdownDesc":"O computador foi encerrado. A aguardar que volte a ser ligado para restabelecer a ligação.","stateSleepTitle":"PC Suspenso","stateSleepDesc":"O computador entrou em modo de suspensão. Assim que for reativado, a ligação será restaurada automaticamente.","stateHibernateTitle":"PC Hibernado","stateHibernateDesc":"O computador está em modo de hibernação. Quando ligares o PC novamente, a ligação será restaurada.","stateSignoutTitle":"Sessão Terminada","stateSignoutDesc":"A sessão de utilizador no Windows foi terminada.","stateRestartTitle":"A Reiniciar PC...","stateRestartDesc":"O computador está a reiniciar. A ligação será restabelecida dentro de momentos.","badgeShutdown":"Desligado","badgeSleep":"Suspenso","badgeHibernate":"Hibernado","badgeSignout":"Sessão Terminada","badgeRestart":"A Reiniciar...","reconnectingHint":"A aguardar que o PC volte a ligar...","pcReconnected":"PC Conectado!"},"en":{"title":"SmartOff Remote","connected":"Connected","connecting":"Connecting to PC...","offline":"Offline","installTitle":"📲 Install as Smartphone App","installDesc":"To access anytime without using the browser or scanning the QR code:","androidStep":"<b>On Android (Chrome):</b> Tap the browser menu (<b>the 3 dots ⋮ in top right</b>) and choose <b>\"Add to Home screen\"</b> or <b>\"Install app\"</b>.","iosStep":"<b>On iPhone (Safari):</b> Tap the <b>Share button (⬆️ at the bottom)</b> and choose <b>\"Add to Home Screen\"</b>.","actionActive":"SCHEDULE ACTIVE","targetTime":"Target time:","addExtraTime":"Add Extra Time:","cancelBtn":"❌ Cancel Schedule","shutdownNowBtn":"⚡ Shut Down PC Immediately","idleTitle":"PC is in standby","idleDesc":"No active timer. You can schedule or shut down your PC remotely at any time.","quickSchedule":"Quick Schedule:","h1":"1 hour","h2":"2 hours","shutdownPcNow":"⚡ Shut Down PC Now","sleepPcNow":"🌙 Sleep PC Now","confirmShutdown":"Are you sure you want to shut down the PC now?","confirmSleep":"Put computer to sleep now?","commError":"Error communicating with PC.","bootstrapTitle":"Device not paired","bootstrapDesc":"To access remote control, open <b>SmartOff</b> on your computer and scan the <b>QR code</b> with your camera.","bootstrapSub":"You only need to pair once. Then you can install it as an App!","connectingPc":"Connecting to SmartOff on your PC...","unauthorized":"Unauthorized access. Please scan the official SmartOff QR code on your PC.","customTimeLabel":"⏱️ Other time (in minutes):","customScheduleBtn":"Schedule","startedMsg":"Schedule started successfully!","cancelledMsg":"Schedule cancelled.","stateShutdownTitle":"PC Shut Down","stateShutdownDesc":"The computer has been shut down. Waiting for the PC to turn back on to restore connection.","stateSleepTitle":"PC Sleeping (Suspended)","stateSleepDesc":"The computer entered sleep mode. As soon as it wakes up, connection will be restored automatically.","stateHibernateTitle":"PC Hibernated","stateHibernateDesc":"The computer is hibernating. Once the PC is powered on, connection will be restored.","stateSignoutTitle":"Session Ended","stateSignoutDesc":"The Windows user session has ended.","stateRestartTitle":"Restarting PC...","stateRestartDesc":"The computer is restarting. Connection will be restored shortly.","badgeShutdown":"Shut Down","badgeSleep":"Sleeping","badgeHibernate":"Hibernated","badgeSignout":"Session Ended","badgeRestart":"Restarting...","reconnectingHint":"Waiting for PC to reconnect...","pcReconnected":"PC Reconnected!"},"es":{"title":"SmartOff Remote","connected":"Conectado","connecting":"Conectando al PC...","offline":"Sin Conexión","installTitle":"📲 Instalar como App en el Móvil","installDesc":"Para acceder en cualquier momento sin abrir el navegador ni escanear el QR:","androidStep":"<b>En Android (Chrome):</b> Toca el menú del navegador (<b>los 3 puntos ⋮ arriba a la derecha</b>) y elige <b>\"Añadir a pantalla de inicio\"</b> o <b>\"Instalar aplicación\"</b>.","iosStep":"<b>En iPhone (Safari):</b> Toca el botón <b>Compartir (⬆️ abajo)</b> y elige <b>\"Añadir a la Pantalla de Inicio\"</b>.","actionActive":"APAGADO ACTIVO","targetTime":"Hora prevista:","addExtraTime":"Añadir Tiempo Extra:","cancelBtn":"❌ Cancelar Programación","shutdownNowBtn":"⚡ Apagar PC Inmediatamente","idleTitle":"El PC está en espera","idleDesc":"Ningún temporizador activo. Puedes programar o apagar el ordenador remotamente en cualquier momento.","quickSchedule":"Programación Rápida:","h1":"1 hora","h2":"2 horas","shutdownPcNow":"⚡ Apagar PC Ahora","sleepPcNow":"🌙 Suspender PC Ahora","confirmShutdown":"¿Estás seguro de que quieres apagar el PC ahora?","confirmSleep":"¿Suspender el ordenador ahora?","commError":"Error al comunicar con el PC.","bootstrapTitle":"Dispositivo no emparejado","bootstrapDesc":"Para acceder al control remoto, abre <b>SmartOff</b> en tu ordenador y escanea el <b>código QR</b> con tu cámara.","bootstrapSub":"¡Solo necesitas emparejar una vez. Luego puedes instalar como App!","connectingPc":"Conectando a SmartOff en tu PC...","unauthorized":"Acceso no autorizado. Por favor escanea el código QR oficial de SmartOff en tu PC.","customTimeLabel":"⏱️ Otro tiempo (en minutos):","customScheduleBtn":"Programar","startedMsg":"¡Programación iniciada con éxito!","cancelledMsg":"Programación cancelada.","stateShutdownTitle":"PC Apagado","stateShutdownDesc":"El ordenador se ha apagado. Esperando que vuelva a encenderse para restablecer la conexión.","stateSleepTitle":"PC Suspendido","stateSleepDesc":"El ordenador ha entrado en modo de suspensión. En cuanto se reactive, la conexión se restaurará automáticamente.","stateHibernateTitle":"PC Hibernado","stateHibernateDesc":"El ordenador está en hibernación. Cuando vuelvas a encender el PC, la conexión se restaurará.","stateSignoutTitle":"Sesión Finalizada","stateSignoutDesc":"La sesión de usuario en Windows ha finalizado.","stateRestartTitle":"Reiniciando PC...","stateRestartDesc":"El ordenador se está reiniciando. La conexión se restablecerá en breves momentos.","badgeShutdown":"Apagado","badgeSleep":"Suspendido","badgeHibernate":"Hibernado","badgeSignout":"Sesión Finalizada","badgeRestart":"Reiniciando...","reconnectingHint":"Esperando que el PC vuelva a conectarse...","pcReconnected":"¡PC Reconectado!"},"fr":{"title":"SmartOff Remote","connected":"Connecté","connecting":"Connexion au PC...","offline":"Hors ligne","installTitle":"📲 Installer comme App Mobile","installDesc":"Pour y accéder rapidement sans ouvrir le navigateur ni scanner le QR code :","androidStep":"<b>Sur Android (Chrome) :</b> Touchez le menu du navigateur (<b>les 3 points ⋮ en haut à droite</b>) et choisissez <b>\"Ajouter à l'écran d'accueil\"</b> ou <b>\"Installer l'application\"</b>.","iosStep":"<b>Sur iPhone (Safari) :</b> Touchez le bouton <b>Partager (⬆️ en bas)</b> et choisissez <b>\"Sur l'écran d'accueil\"</b>.","actionActive":"ARRÊT ACTIF","targetTime":"Heure prévue :","addExtraTime":"Ajouter du Temps :","cancelBtn":"❌ Annuler la Programmation","shutdownNowBtn":"⚡ Éteindre le PC Immédiatement","idleTitle":"Le PC est en veille","idleDesc":"Aucun minuteur actif. Vous pouvez programmer ou éteindre l'ordinateur à distance à tout moment.","quickSchedule":"Programmation Rapide :","h1":"1 heure","h2":"2 heures","shutdownPcNow":"⚡ Éteindre le PC Maintenant","sleepPcNow":"🌙 Mettre en Veille Maintenant","confirmShutdown":"Êtes-vous sûr de vouloir éteindre le PC maintenant ?","confirmSleep":"Mettre l'ordinateur en veille maintenant ?","commError":"Erreur de communication avec le PC.","bootstrapTitle":"Appareil non appairé","bootstrapDesc":"Pour accéder au contrôle à distance, ouvrez <b>SmartOff</b> sur votre ordinateur et scannez le <b>QR code</b> avec votre appareil photo.","bootstrapSub":"Un seul appairage suffit. Ensuite, vous pouvez l'installer comme une App !","connectingPc":"Connexion à SmartOff sur votre PC...","unauthorized":"Accès non autorizado. Veuillez scanner le QR code officiel de SmartOff sur votre PC.","customTimeLabel":"⏱️ Autre durée (en minutes) :","customScheduleBtn":"Programmer","startedMsg":"Minuteur démarré avec succès !","cancelledMsg":"Minuteur annulé.","stateShutdownTitle":"PC Éteint","stateShutdownDesc":"L'ordinateur a été éteint. En attente de son redémarrage pour rétablir la connexion.","stateSleepTitle":"PC en Veille","stateSleepDesc":"L'ordinateur est passé en mode veille. Dès son réveil, la connexion sera rétablie automatiquement.","stateHibernateTitle":"PC en Hibernation","stateHibernateDesc":"L'ordinateur est en hibernation. Lorsque vous le rallumerez, la connexion sera rétablie.","stateSignoutTitle":"Session Fermée","stateSignoutDesc":"La session utilisateur Windows a été fermée.","stateRestartTitle":"Redémarrage du PC...","stateRestartDesc":"L'ordinateur redémarre. La connexion sera rétablie sous peu.","badgeShutdown":"Éteint","badgeSleep":"En Veille","badgeHibernate":"En Hibernation","badgeSignout":"Session Fermée","badgeRestart":"Redémarrage...","reconnectingHint":"En attente de reconnexion du PC...","pcReconnected":"PC Reconnecté !"},"de":{"title":"SmartOff Remote","connected":"Verbunden","connecting":"Verbindung zum PC...","offline":"Offline","installTitle":"📲 Als App auf dem Smartphone installieren","installDesc":"Für schnellen Zugriff ohne Browser oder erneutes QR-Code-Scannen:","androidStep":"<b>Auf Android (Chrome):</b> Tippen Sie auf das Menü (<b>die 3 Punkte ⋮ oben rechts</b>) und wählen Sie <b>\"Zum Startbildschirm hinzufügen\"</b> oder <b>\"App installieren\"</b>.","iosStep":"<b>Auf iPhone (Safari):</b> Tippen Sie auf <b>Teilen (⬆️ unten)</b> und wählen Sie <b>\"Zum Home-Bildschirm\"</b>.","actionActive":"HERUNTERFAHREN AKTIV","targetTime":"Voraussichtliche Zeit:","addExtraTime":"Zeit hinzufügen:","cancelBtn":"❌ Zeitplan abbrechen","shutdownNowBtn":"⚡ PC sofort herunterfahren","idleTitle":"PC ist im Standby","idleDesc":"Kein aktiver Timer. Sie können den PC jederzeit aus der Ferne planen oder herunterfahren.","quickSchedule":"Schnellzeitplan:","h1":"1 Stunde","h2":"2 Stunden","shutdownPcNow":"⚡ PC jetzt herunterfahren","sleepPcNow":"🌙 PC jetzt in den Energiesparmodus","confirmShutdown":"Möchten Sie den PC wirklich jetzt herunterfahren?","confirmSleep":"Computer jetzt in den Energiesparmodus versetzen?","commError":"Fehler bei der Kommunikation mit dem PC.","bootstrapTitle":"Gerät nicht gekoppelt","bootstrapDesc":"Öffnen Sie <b>SmartOff</b> auf Ihrem PC und scannen Sie den <b>QR-Code</b> mit Ihrer Kamera.","bootstrapSub":"Nur einmal koppeln erforderlich. Danach können Sie es als App nutzen!","connectingPc":"Verbindung zu SmartOff auf Ihrem PC...","unauthorized":"Unbefugter Zugriff. Bitte scannen Sie den offiziellen QR-Code auf Ihrem PC.","customTimeLabel":"⏱️ Andere Zeit (in Minuten):","customScheduleBtn":"Planen","startedMsg":"Zeitplan erfolgreich gestartet!","cancelledMsg":"Zeitplan abgebrochen.","stateShutdownTitle":"PC Heruntergefahren","stateShutdownDesc":"Der Computer wurde heruntergefahren. Warten auf das erneute Einschalten, um die Verbindung wiederherzustellen.","stateSleepTitle":"PC im Energiesparmodus","stateSleepDesc":"Der Computer befindet sich im Energiesparmodus. Sobald er aufgeweckt wird, wird die Verbindung automatisch wiederhergestellt.","stateHibernateTitle":"PC im Ruhezustand","stateHibernateDesc":"Der Computer befindet sich im Ruhezustand. Nach dem Einschalten wird die Verbindung wiederhergestellt.","stateSignoutTitle":"Abgemeldet","stateSignoutDesc":"Die Windows-Benutzersitzung wurde beendet.","stateRestartTitle":"PC startet neu...","stateRestartDesc":"Der Computer startet neu. Die Verbindung wird in Kürze wiederhergestellt.","badgeShutdown":"Ausgeschaltet","badgeSleep":"Standby","badgeHibernate":"Ruhezustand","badgeSignout":"Abgemeldet","badgeRestart":"Neustart...","reconnectingHint":"Warten auf erneute Verbindung zum PC...","pcReconnected":"PC Wiederverbunden!"},"it":{"title":"SmartOff Remote","connected":"Connesso","connecting":"Connessione al PC...","offline":"Non connesso","installTitle":"📲 Installa come App sullo Smartphone","installDesc":"Per accedere rapidamente senza aprire il browser né scansionare nuovamente il codice QR:","androidStep":"<b>Su Android (Chrome):</b> Tocca il menu (<b>i 3 puntini ⋮ in alto a destra</b>) e seleziona <b>\"Aggiungi a schermata Home\"</b> o <b>\"Installa app\"</b>.","iosStep":"<b>Su iPhone (Safari):</b> Tocca il pulsante <b>Condividi (⬆️ in basso)</b> e seleziona <b>\"Aggiungi alla schermata Home\"</b>.","actionActive":"SPEGNIMENTO ATTIVO","targetTime":"Ora prevista:","addExtraTime":"Aggiungi Tempo Extra:","cancelBtn":"❌ Annulla Pianificazione","shutdownNowBtn":"⚡ Spegni PC Immediatamente","idleTitle":"Il PC è in standby","idleDesc":"Nessun timer attivo. Puoi pianificare o spegnere il computer da remoto in qualsiasi momento.","quickSchedule":"Pianificazione Rapida:","h1":"1 ora","h2":"2 ore","shutdownPcNow":"⚡ Spegni PC Ora","sleepPcNow":"🌙 Sospendi PC Ora","confirmShutdown":"Sei sicuro di voler spegnere il PC adesso?","confirmSleep":"Mettere il computer in sospensione adesso?","commError":"Errore di comunicazione con il PC.","bootstrapTitle":"Dispositivo non associato","bootstrapDesc":"Per accedere al controllo remoto, apri <b>SmartOff</b> sul computer e scansiona il <b>codice QR</b> con la fotocamera.","bootstrapSub":"Basta associarlo una sola volta. Poi potrai aggiungerlo come App!","connectingPc":"Connessione a SmartOff sul PC...","unauthorized":"Accesso non autorizzato. Scansiona il codice QR ufficiale sul tuo PC.","customTimeLabel":"⏱️ Altro tempo (in minuti):","customScheduleBtn":"Pianifica","startedMsg":"Pianificazione avviata con successo!","cancelledMsg":"Pianificazione annullata.","stateShutdownTitle":"PC Spento","stateShutdownDesc":"Il computer è stato arrestato. In attesa che venga riacceso per ripristinare la connessione.","stateSleepTitle":"PC in Sospensione","stateSleepDesc":"Il computer è entrato in modalità sospensione. Non appena verrà riattivato, la connessione verrà ripristinata automaticamente.","stateHibernateTitle":"PC in Ibernazione","stateHibernateDesc":"Il computer è in ibernazione. Alla riaccensione, la connessione verrà ripristinata.","stateSignoutTitle":"Sessione Terminata","stateSignoutDesc":"La sessione utente di Windows è terminata.","stateRestartTitle":"Riavvio del PC...","stateRestartDesc":"Il computer si sta riavviando. La connessione sarà ripristinata a breve.","badgeShutdown":"Spento","badgeSleep":"In Sospensione","badgeHibernate":"In Ibernazione","badgeSignout":"Sessione Terminata","badgeRestart":"Riavvio...","reconnectingHint":"In attesa che il PC si riconnetta...","pcReconnected":"PC Riconnesso!"},"zh-CN":{"title":"SmartOff 手机远程遥控","connected":"已连接","connecting":"正在连接电脑...","offline":"离线无连接","installTitle":"📲 安装为手机轻应用 (App)","installDesc":"无需重复扫码，一键直达遥控：","androidStep":"<b>安卓手机 (Chrome):</b> 点击浏览器右上角菜单 (<b>三个小点 ⋮</b>)，选择 <b>\"添加到主屏幕\"</b> 或 <b>\"安装应用\"</b>。","iosStep":"<b>苹果手机 (Safari):</b> 点击底部 <b>分享按钮 (⬆️)</b>，选择 <b>\"添加到主屏幕\"</b>。","actionActive":"计划任务执行中","targetTime":"预计关机时间:","addExtraTime":"追加延长等待时间:","cancelBtn":"❌ 取消定时任务","shutdownNowBtn":"⚡ 立即关闭电脑","idleTitle":"电脑处于待机就绪状态","idleDesc":"当前无运行中的计时任务。您可以随时在手机上启动定时或远程关机。","quickSchedule":"快捷定时设定:","h1":"1 小时","h2":"2 小时","shutdownPcNow":"⚡ 立即关闭电脑","sleepPcNow":"🌙 立即进入睡眠","confirmShutdown":"确定要立即关闭电脑吗？","confirmSleep":"确定要让电脑进入睡眠模式吗？","commError":"与电脑通讯失败，请检查 Wi-Fi 连接。","bootstrapTitle":"设备尚未配对","bootstrapDesc":"请在电脑屏幕上打开 <b>SmartOff</b>，并使用手机相机扫描 <b>二维码</b>。","bootstrapSub":"仅需初次配对一次，之后可直接作为 App 使用！","connectingPc":"正在连接至电脑上的 SmartOff...","unauthorized":"未授权访问。请在电脑端扫描官方 SmartOff 二维码。","customTimeLabel":"⏱️ 自定义时长（分钟）：","customScheduleBtn":"定时关机","startedMsg":"定时任务已成功启动！","cancelledMsg":"定时任务已取消。","stateShutdownTitle":"电脑已关机","stateShutdownDesc":"电脑已成功关闭。等待电脑重新开机后将自动恢复连接。","stateSleepTitle":"电脑已睡眠","stateSleepDesc":"电脑已进入睡眠挂起状态。电脑被唤醒后将自动恢复连接。","stateHibernateTitle":"电脑已休眠","stateHibernateDesc":"电脑已进入休眠模式。重新开机后将自动恢复连线。","stateSignoutTitle":"会话已注销","stateSignoutDesc":"Windows 用户会话已注销退出。","stateRestartTitle":"电脑正在重启...","stateRestartDesc":"电脑正在重新启动，稍后将自动恢复连接。","badgeShutdown":"已关机","badgeSleep":"已睡眠","badgeHibernate":"已休眠","badgeSignout":"已注销","badgeRestart":"重启中...","reconnectingHint":"正在等待电脑重新上线...","pcReconnected":"电脑已重新连接！"},"zh-TW":{"title":"SmartOff 手機遠端遙控","connected":"已連線","connecting":"正在連線至電腦...","offline":"離線無連線","installTitle":"📲 安裝為手機 App","installDesc":"免重複掃碼，一鍵即開即用：","androidStep":"<b>Android (Chrome):</b> 點選瀏覽器右上角選單 (<b>三個點 ⋮</b>)，選擇 <b>「新增至主畫面」</b> 或 <b>「安裝應用程式」</b>。","iosStep":"<b>iPhone (Safari):</b> 點選底部 <b>分享按鈕 (⬆️)</b>，選擇 <b>「加入主畫面」</b>。","actionActive":"排程任務執行中","targetTime":"預計關機時間:","addExtraTime":"延長等待時間:","cancelBtn":"❌ 取消排程任務","shutdownNowBtn":"⚡ 立即關閉電腦","idleTitle":"電腦目前處於待命狀態","idleDesc":"目前無執行中的計時任務。您可以隨時在手機上設定排程或遠端關機。","quickSchedule":"快速排程設定:","h1":"1 小時","h2":"2 小時","shutdownPcNow":"⚡ 立即關閉電腦","sleepPcNow":"🌙 立即進入睡眠","confirmShutdown":"確定要立即關閉電腦嗎？","confirmSleep":"確定要讓電腦進入睡眠模式嗎？","commError":"與電腦連線中斷，請確認處於同一 Wi-Fi。","bootstrapTitle":"裝置尚未配對","bootstrapDesc":"請在電腦螢幕上開啟 <b>SmartOff</b>，並使用手機相機掃描 <b>QR Code</b>。","bootstrapSub":"僅需配對一次，隨後即可新增為 App 使用！","customTimeLabel":"⏱️ 自訂時間（分鐘）：","customScheduleBtn":"定時關機","startedMsg":"定時任務已成功啟動！","cancelledMsg":"定時任務已取消。","connectingPc":"正在連線至電腦上的 SmartOff...","unauthorized":"未授權存取。請於電腦端掃描官方 SmartOff QR Code。","stateShutdownTitle":"電腦已關機","stateShutdownDesc":"電腦已成功關閉。等待電腦重新開機後將自動恢復連線。","stateSleepTitle":"電腦已睡眠","stateSleepDesc":"電腦已進入睡眠掛起狀態。電腦被喚醒後將自動恢復連線。","stateHibernateTitle":"電腦已休眠","stateHibernateDesc":"電腦已進入休眠模式。重新開機後將自動恢復連線。","stateSignoutTitle":"工作階段已登出","stateSignoutDesc":"Windows 使用者工作階段已登出結束。","stateRestartTitle":"電腦正在重新啟動...","stateRestartDesc":"電腦正在重新啟動，稍後將自動恢復連線。","badgeShutdown":"已關機","badgeSleep":"已睡眠","badgeHibernate":"已休眠","badgeSignout":"已登出","badgeRestart":"重啟中...","reconnectingHint":"正在等待電腦重新連線...","pcReconnected":"電腦已重新連線！"}};
+    const urlParams = new URLSearchParams(window.location.search);
+    let tokenFromUrl = urlParams.get('token');
+    let TOKEN = tokenFromUrl || localStorage.getItem('smartoff_token') || '';
+    let currentLang = urlParams.get('lang') || localStorage.getItem('smartoff_lang') || 'pt';
+
+    if (tokenFromUrl) {
+      try {
+        localStorage.setItem('smartoff_token', tokenFromUrl);
+        sessionStorage.setItem('smartoff_token', tokenFromUrl);
+        document.cookie = 'smartoff_token=' + encodeURIComponent(tokenFromUrl) + '; Max-Age=315360000; Path=/; SameSite=Lax';
+      } catch (e) {}
+    }
+
+    let activeHost = localStorage.getItem('smartoff_active_host') || '';
+    let isCurrentlyOffline = false;
+    let isFetching = false;
+    let lastState = null;
+    let consecutiveFailures = 0;
+    let lastRelayQueryTime = 0;
+
+    function applyLanguageUI() {
+      const t = DICT[currentLang] || DICT.pt;
+      document.querySelectorAll('.lang-pill').forEach(btn => {
+        btn.classList.toggle('active', btn.id === 'btn-lang-' + currentLang);
+      });
+      document.getElementById('txt-install-title').textContent = t.installTitle;
+      document.getElementById('txt-install-desc').textContent = t.installDesc;
+      document.getElementById('guide-android').innerHTML = t.androidStep;
+      document.getElementById('guide-ios').innerHTML = t.iosStep;
+      document.getElementById('txt-add-time-title').textContent = t.addExtraTime;
+      document.getElementById('btn-cancel-action').textContent = t.cancelBtn;
+      document.getElementById('btn-shutdown-now').textContent = t.shutdownNowBtn;
+      document.getElementById('txt-idle-title').textContent = t.idleTitle;
+      document.getElementById('txt-idle-desc').textContent = t.idleDesc;
+      document.getElementById('txt-quick-title').textContent = t.quickSchedule;
+      document.getElementById('btn-preset-1h').textContent = t.h1;
+      document.getElementById('btn-preset-2h').textContent = t.h2;
+      document.getElementById('btn-shutdown-pc-now').textContent = t.shutdownPcNow;
+      document.getElementById('btn-sleep-pc-now').textContent = t.sleepPcNow;
+      const customLabel = document.getElementById('txt-custom-time-label');
+      if (customLabel) customLabel.textContent = t.customTimeLabel || '⏱️ Outro tempo (em minutos):';
+      const customBtn = document.getElementById('btn-custom-start');
+      if (customBtn) customBtn.textContent = t.customScheduleBtn || 'Agendar';
+      if (isCurrentlyOffline) {
+        renderPowerState(localStorage.getItem('smartoff_power_state') || 'shutdown');
+      } else if (lastState) {
+        renderState(lastState);
+      }
+    }
+
+    function switchLanguage(lang) {
+      if (!DICT[lang]) lang = 'pt';
+      currentLang = lang;
+      try { localStorage.setItem('smartoff_lang', lang); } catch (e) {}
+      applyLanguageUI();
+    }
+
+    function dismissInstallGuide() {
+      const box = document.getElementById('install-guide-box');
+      if (box) box.style.display = 'none';
+      try { localStorage.setItem('smartoff_install_dismissed', '1'); } catch (e) {}
+    }
+
+    function stripSlash(s) {
+      return (s && s.endsWith('/')) ? s.slice(0, -1) : (s || '');
+    }
+
+    function fetchWithTimeout(url, options = {}, timeoutMs = 3000) {
+      if (!window.AbortController) return fetch(url, options);
+      const controller = new AbortController();
+      const signal = controller.signal;
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      return fetch(url, Object.assign({}, options, { signal }))
+        .finally(() => clearTimeout(timer));
+    }
+
+    async function testHostEndpoint(hostUrl, timeoutMs = 1200) {
+      if (!hostUrl || typeof hostUrl !== 'string' || !hostUrl.startsWith('http')) return false;
+      const clean = stripSlash(hostUrl);
+      try {
+        const testUrl = clean + '/api/status?token=' + encodeURIComponent(TOKEN) + '&_p=' + Date.now();
+        const res = await fetchWithTimeout(testUrl, {
+          headers: { 'X-SmartOff-Token': TOKEN }
+        }, timeoutMs);
+        if (res && res.ok) {
+          const json = await res.json();
+          if (json && (json.serverToken === TOKEN || json.active !== undefined)) {
+            return clean;
+          }
+        }
+      } catch (e) {}
+      return false;
+    }
+
+    async function queryRelay(force = false) {
+      if (!TOKEN) return null;
+      const now = Date.now();
+      if (!force && (now - lastRelayQueryTime < 5000)) return null;
+      lastRelayQueryTime = now;
+
+      try {
+        const relayUrl = 'https://ntfy.sh/smartoff_dyn_' + encodeURIComponent(TOKEN) + '/json?poll=1&since=all';
+        const res = await fetchWithTimeout(relayUrl, {}, 2500);
+        if (res && res.ok) {
+          const text = await res.text();
+          const lines = text.trim().split(String.fromCharCode(10));
+          for (let i = lines.length - 1; i >= 0; i--) {
+            const lineStr = (lines[i] || '').trim();
+            if (!lineStr) continue;
+            try {
+              const row = JSON.parse(lineStr);
+              if (row.event === 'message' && row.message) {
+                const parsed = JSON.parse(row.message);
+                if (parsed && parsed.ts && (now - parsed.ts < 86400000)) {
+                  return parsed;
+                }
+              }
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    async function resolveWorkingHost() {
+      // 1. Test current activeHost if known
+      if (activeHost) {
+        const ok = await testHostEndpoint(activeHost, 1000);
+        if (ok) return ok;
+      }
+
+      // 2. Query dynamic relay (gets latest local IP & tunnel URL)
+      const relay = await queryRelay(true);
+      const candidates = [];
+
+      if (relay) {
+        if (relay.localIp) {
+          candidates.push('http://' + relay.localIp + ':' + (relay.port || 4856));
+        }
+        if (relay.tunnelUrl) {
+          candidates.push(stripSlash(relay.tunnelUrl));
+        }
+      }
+
+      // Local Bonjour / mDNS fallback
+      candidates.push('http://nuno-pc.local:4856');
+      candidates.push('http://192.168.1.87:4856');
+
+      const savedLocal = localStorage.getItem('smartoff_local_endpoint');
+      if (savedLocal && !candidates.includes(savedLocal)) candidates.push(savedLocal);
+
+      // Fast check candidates
+      for (const cand of candidates) {
+        const ok = await testHostEndpoint(cand, 1200);
+        if (ok) {
+          activeHost = ok;
+          try {
+            localStorage.setItem('smartoff_active_host', ok);
+            if (!ok.includes('trycloudflare.com')) {
+              localStorage.setItem('smartoff_local_endpoint', ok);
+            }
+          } catch (e) {}
+          updateConnSummary();
+          return ok;
+        }
+      }
+
+      return null;
+    }
+
+    function updateConnSummary() {
+      const summaryEl = document.getElementById('txt-conn-summary');
+      const dotEl = document.getElementById('dot-conn-mini');
+      if (!summaryEl || !dotEl) return;
+      if (activeHost && activeHost.includes('trycloudflare.com')) {
+        summaryEl.textContent = 'Universal 4G (' + activeHost.replace('https://','').split('.')[0] + ')';
+        dotEl.style.background = isCurrentlyOffline ? '#ef4444' : '#10b981';
+      } else if (activeHost) {
+        summaryEl.textContent = 'Wi-Fi: ' + activeHost.replace('http://','');
+        dotEl.style.background = isCurrentlyOffline ? '#ef4444' : '#10b981';
+      } else {
+        summaryEl.textContent = 'A procurar PC...';
+        dotEl.style.background = '#f59e0b';
+      }
+    }
+
+    function renderPowerState(action) {
+      if (consecutiveFailures < 2) return;
+      isCurrentlyOffline = true;
+      const t = DICT[currentLang] || DICT.pt;
+      const viewActive = document.getElementById('view-active');
+      const viewIdle = document.getElementById('view-idle');
+      const viewPower = document.getElementById('view-power-state');
+      const box = document.getElementById('box-power-state');
+      const iconEl = document.getElementById('icon-power-state');
+      const titleEl = document.getElementById('txt-power-title');
+      const descEl = document.getElementById('txt-power-desc');
+      const dot = document.getElementById('dot-status');
+      const label = document.getElementById('label-status');
+
+      if (viewActive) viewActive.style.display = 'none';
+      if (viewIdle) viewIdle.style.display = 'none';
+      if (viewPower) viewPower.style.display = 'block';
+
+      const act = action || 'shutdown';
+      if (box) box.className = 'power-state-box ' + act;
+      if (dot) dot.className = 'pulse-dot shutdown';
+      if (label) label.textContent = t.badgeShutdown || 'Desligado';
+      if (iconEl) iconEl.textContent = '⏻';
+      if (titleEl) titleEl.textContent = t.stateShutdownTitle || 'PC Desligado';
+      if (descEl) descEl.textContent = t.stateShutdownDesc || 'O computador foi encerrado. A aguardar que volte a ligar...';
+    }
+
+    function formatHMS(seconds) {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    }
+
+    function renderState(state) {
+      isCurrentlyOffline = false;
+      consecutiveFailures = 0;
+      lastState = state;
+      const t = DICT[currentLang] || DICT.pt;
+
+      const viewActive = document.getElementById('view-active');
+      const viewIdle = document.getElementById('view-idle');
+      const viewPower = document.getElementById('view-power-state');
+      const dot = document.getElementById('dot-status');
+      const label = document.getElementById('label-status');
+
+      if (viewPower) viewPower.style.display = 'none';
+      if (dot) dot.className = 'pulse-dot';
+      if (label) label.textContent = t.connected || 'Conectado';
+
+      if (state && state.active && state.remainingSeconds > 0) {
+        if (viewActive) viewActive.style.display = 'flex';
+        if (viewIdle) viewIdle.style.display = 'none';
+        const digits = document.getElementById('txt-digits');
+        const target = document.getElementById('txt-target-time');
+        if (digits) digits.textContent = formatHMS(state.remainingSeconds);
+        if (target) {
+          const endTime = new Date(Date.now() + (state.remainingSeconds * 1000));
+          target.textContent = (t.targetTime || 'Hora prevista: ') + endTime.toLocaleTimeString();
+        }
+      } else {
+        if (viewActive) viewActive.style.display = 'none';
+        if (viewIdle) viewIdle.style.display = 'flex';
+      }
+    }
+
+    async function fetchStatus() {
+      if (!TOKEN) {
+        document.getElementById('view-pairing').style.display = 'block';
+        document.getElementById('view-content').style.display = 'none';
+        return;
+      }
+
+      if (isFetching) return;
+      isFetching = true;
+
+      try {
+        if (!activeHost) {
+          activeHost = await resolveWorkingHost();
+        }
+
+        if (!activeHost) {
+          consecutiveFailures++;
+          renderPowerState('shutdown');
+          return;
+        }
+
+        const url = activeHost + '/api/status?token=' + encodeURIComponent(TOKEN) + '&_p=' + Date.now();
+        const res = await fetchWithTimeout(url, {
+          headers: { 'X-SmartOff-Token': TOKEN }
+        }, 2000);
+
+        if (res && res.ok) {
+          const data = await res.json();
+          renderState(data);
+          updateConnSummary();
+        } else {
+          throw new Error('Status not ok');
+        }
+      } catch (err) {
+        consecutiveFailures++;
+        if (consecutiveFailures >= 2) {
+          // Attempt resolving host in background
+          resolveWorkingHost().then(found => {
+            if (found) fetchStatus();
+          });
+          renderPowerState('shutdown');
+        }
+      } finally {
+        isFetching = false;
+      }
+    }
+
+    async function sendAction(action, payload = {}) {
+      if (!activeHost) {
+        activeHost = await resolveWorkingHost();
+        if (!activeHost) {
+          alert('A ligar ao PC... Por favor aguarda um momento.');
+          return;
+        }
+      }
+
+      const bodyObj = Object.assign({}, payload, { action: action });
+      try {
+        const url = activeHost + '/api/action?token=' + encodeURIComponent(TOKEN);
+        const res = await fetchWithTimeout(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-SmartOff-Token': TOKEN
+          },
+          body: JSON.stringify(bodyObj)
+        }, 3000);
+
+        if (res && res.ok) {
+          showToast('Comando enviado!');
+          setTimeout(fetchStatus, 100);
+          setTimeout(fetchStatus, 500);
+        } else {
+          throw new Error('Action response error');
+        }
+      } catch (err) {
+        alert('Erro ao comunicar com o PC.');
+      }
+    }
+
+    function confirmAction(action) {
+      const t = DICT[currentLang] || DICT.pt;
+      const msg = (action === 'shutdown-now' || action === 'shutdown') ? t.confirmShutdown : t.confirmSleep;
+      if (confirm(msg)) {
+        sendAction(action);
+      }
+    }
+
+    function scheduleCustomMinutes() {
+      const input = document.getElementById('input-custom-mins');
+      const val = parseInt(input ? input.value : 0, 10);
+      if (val && val > 0 && val <= 1440) {
+        sendAction('start', { seconds: val * 60, actionType: 'shutdown' });
+        if (input) input.value = '';
+      }
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast-notification');
+      if (t) {
+        t.textContent = msg;
+        t.style.display = 'block';
+        setTimeout(() => { t.style.display = 'none'; }, 2500);
+      }
+    }
+
+    const isStandalone = Boolean(window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches);
+    const guideBox = document.getElementById('install-guide-box');
+    if (guideBox && (isStandalone || localStorage.getItem('smartoff_install_dismissed') === '1')) {
+      guideBox.style.display = 'none';
+    }
+
+    applyLanguageUI();
+    fetchStatus();
+    setInterval(fetchStatus, 1500);
+
+    window.addEventListener('online', fetchStatus);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') fetchStatus();
+    });
+  </script>
+</body>
+</html>
